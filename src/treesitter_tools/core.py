@@ -216,16 +216,27 @@ def _identifier_from(node: Node, source: bytes) -> Optional[str]:
 
 
 def _python_docstring(node: Node, source: bytes) -> Optional[str]:
+    """Extract Python docstring from a function or class node."""
     if not node.children:
         return None
+    
     for child in node.children:
         if child.type == "block" and child.child_count:
             first = child.children[0]
+            
+            # Check for direct string (common case)
+            if first.type == "string":
+                text = _node_text(first, source)
+                # Strip quotes and whitespace
+                return text.strip('"\' ')
+            
+            # Check for expression_statement wrapping a string (alternate case)
             if first.type == "expression_statement" and first.child_count:
                 expr = first.children[0]
                 if expr.type in {"string", "string_literal"}:
                     text = _node_text(expr, source)
-                    return text.strip("\"' ")
+                    return text.strip('"\' ')
+    
     return None
 
 
