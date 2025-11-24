@@ -1,13 +1,15 @@
 # treesitter-tools
 
-`treesitter-tools` is a lightweight Python CLI + library that wraps Tree-sitter so agents can inspect local source code the same way osgrep does. It currently auto-detects 30+ grammars (Python, JS/TS, C/C++, Obj-C, Rust, Go, Java/Kotlin/Scala, Swift, C#, PHP, Ruby, Bash, Lua, JSON/YAML/TOML, etc.) thanks to `tree_sitter_language_pack`, and it can:
+`treesitter-tools` is a **pure AST extraction library** for Python that uses Tree-sitter to parse and extract structured information from source code. Unlike semantic search tools (embeddings, vector DBs), this focuses solely on parsing code into queryable structures.
 
-- detect a file's language automatically
-- parse code with `tree_sitter_language_pack`
-- walk the AST to list top-level functions/classes with signatures, docstrings, and locations
-- run Tree-sitter queries for ad-hoc inspection
+It auto-detects 30+ languages (Python, JS/TS, C/C++, Obj-C, Rust, Go, Java/Kotlin/Scala, Swift, C#, PHP, Ruby, Bash, Lua, JSON/YAML/TOML, etc.) via `tree_sitter_language_pack` and provides:
 
-The goal is to keep analyses local (no MCP server needed) while exposing a CLI (`treesitter-tools symbols ...`) that other automation can shell into.
+- **Automatic language detection** from file extensions
+- **Function/class extraction** with signatures, docstrings, line numbers, and full source content
+- **Tree-sitter query execution** for advanced AST inspection  
+- **Directory scanning** with glob pattern filtering
+
+**Use cases:** Code analysis, documentation generation, static analysis tools, LLM context preparation, code search indexing.
 
 ## Quick start
 
@@ -15,8 +17,11 @@ The goal is to keep analyses local (no MCP server needed) while exposing a CLI (
 # install locally
 uv pip install -e .
 
-# list functions/classes in a file
+# list functions/classes in a file (metadata only)
 treesitter-tools symbols path/to/file.py
+
+# extract full source code of functions/classes
+treesitter-tools symbols path/to/file.py --content
 
 # save JSON elsewhere and override the language
 treesitter-tools symbols app/component.tsx --language typescript --output ast.json
@@ -26,6 +31,18 @@ treesitter-tools query app/component.tsx '(function_declaration name: (identifie
 
 # walk an entire repo and get JSON + Markdown outline
 treesitter-tools scan . --include "src/**/*.py" --outline outline.md --output symbols.json
+```
+
+### Content Extraction
+
+The `--content` flag extracts the full source code of each function/class, not just metadata. This is essential for:
+- **LLM context preparation** - feed complete function bodies to language models
+- **Code chunking** - split large files into semantic units (functions) for embedding/indexing
+- **Documentation generation** - include full implementation in generated docs
+
+```bash
+# Extract full function bodies for embedding pipeline
+treesitter-tools symbols src/
 ```
 
 Programmatic use mirrors the CLI:
