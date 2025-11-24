@@ -29,7 +29,7 @@ for artifact_path in artifacts:
     for r in result:
         r['content'] = None
     
-    # Output to tests/expected/ with cleaner naming
-    output_path = Path('tests/expected') / (f.name + '.json')
+    # Output expected file in same directory as artifact
+    output_path = f.parent / (f.name + '.expected.json')
     output_path.write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(f"Generated {output_path}")
