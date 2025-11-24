@@ -240,6 +240,88 @@ def _python_docstring(node: Node, source: bytes) -> Optional[str]:
     return None
 
 
+def _extract_comment_before_node(node: Node, source: bytes, root: Node) -> Optional[str]:
+    """Extract comment that appears immediately before a node (for JS, Go, Java, C, etc)."""
+    # Find the parent to get siblings
+    parent = node.parent
+    if not parent:
+        return None
+    
+    # Find the node's index in parent's children
+    node_index = None
+    for i, child in enumerate(parent.children):
+        if child.id == node.id:
+            node_index = i
+            break
+    
+    if node_index is None or node_index == 0:
+        return None
+    
+    # Look at the previous sibling
+    prev_sibling = parent.children[node_index - 1]
+    
+    # Check if it's a comment (Java uses "block_comment", others use "comment")
+    if prev_sibling.type in {"comment", "block_comment"}:
+        comment_text = _node_text(prev_sibling, source)
+        # Clean up comment markers
+        comment_text = comment_text.strip()
+        # Remove common prefixes: //, ///, /*, */, /**
+        if comment_text.startswith('/**') and comment_text.endswith('*/'):
+            # JSDoc/Javadoc style
+            comment_text = comment_text[3:-2]
+        elif comment_text.startswith('/*') and comment_text.endswith('*/'):
+            comment_text = comment_text[2:-2]
+        elif comment_text.startswith('///'):
+            # Doxygen or Rust style (though Rust handled separately)
+            comment_text = comment_text[3:]
+        elif comment_text.startswith('//'):
+            comment_text = comment_text[2:]
+        
+        return comment_text.strip()
+    
+    return None
+
+
+def _rust_doc_comment(node: Node, source: bytes, root: Node) -> Optional[str]:
+    """Extract Rust doc comment (///) that appears before a node."""
+    parent = node.parent
+    if not parent:
+        return None
+    
+    # Find node index
+    node_index = None
+    for i, child in enumerate(parent.children):
+        if child.id == node.id:
+            node_index = i
+            break
+    
+    if node_index is None or node_index == 0:
+        return None
+    
+    # Look at previous sibling
+    prev_sibling = parent.children[node_index - 1]
+    
+    # Rust doc comments have structure: line_comment -> doc_comment
+    if prev_sibling.type == "line_comment":
+        for child in prev_sibling.children:
+            if child.type == "doc_comment":
+                return _node_text(child, source).strip()
+    
+    return None
+
+
+def _extract_docstring(node: Node, source: bytes, language: str, root: Node) -> Optional[str]:
+    """Extract documentation string/comment for a node based on language."""
+    if language == "python":
+        return _python_docstring(node, source)
+    elif language == "rust":
+        return _rust_doc_comment(node, source, root)
+    elif language in {"javascript", "typescript", "java", "go", "c", "cpp", "php"}:
+        return _extract_comment_before_node(node, source, root)
+    
+    return None
+
+
 def _signature_snippet(node: Node, source: bytes) -> str:
     lines = _node_text(node, source).splitlines()
     if not lines:
@@ -318,7 +400,7 @@ def extract_symbols(path: Path, language: Optional[str] = None, max_chunk_size: 
             target = name_source_node or node
             name = _identifier_from(target, source) or "<anonymous>"
         
-        doc = _python_docstring(node, source) if language == "python" else None
+        doc = _extract_docstring(node, source, language, root)
         content = _node_text(node, source)
         signature = _signature_snippet(node, source)
         start_line = node.start_point[0] + 1
