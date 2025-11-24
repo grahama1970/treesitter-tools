@@ -1,0 +1,47 @@
+[
+  {
+    "kind": "function",
+    "name": "NewCache",
+    "start_line": 14,
+    "end_line": 19,
+    "signature": "func NewCache(maxSize int) *Cache { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "Get",
+    "start_line": 21,
+    "end_line": 26,
+    "signature": "func (c *Cache) Get(key string) (interface{}, bool) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "Set",
+    "start_line": 28,
+    "end_line": 32,
+    "signature": "func (c *Cache) Set(key string, value interface{}) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "HashString",
+    "start_line": 34,
+    "end_line": 40,
+    "signature": "func HashString(s string) uint32 { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "main",
+    "start_line": 42,
+    "end_line": 46,
+    "signature": "func main() { ...",
+    "docstring": null,
+    "content": null
+  }
+]

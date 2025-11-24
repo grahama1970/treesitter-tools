@@ -1,0 +1,4 @@
+This is not valid code at all!
+Just some random text with @#$%^&*()
+Symbols and garbage characters }{][
+No syntax whatsoever...
