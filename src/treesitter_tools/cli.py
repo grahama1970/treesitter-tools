@@ -69,10 +69,18 @@ def scan(
     exclude: List[str] = typer.Option([], help="Glob patterns to exclude"),
     output: Optional[Path] = typer.Option(None, help="Write JSON report to this path"),
     outline: Optional[Path] = typer.Option(None, help="Optional markdown outline destination"),
+    content: bool = typer.Option(False, "--content", "-c", help="Include full source code of symbols"),
 ):
     """Walk a directory and summarize symbols per file."""
 
     reports = scan_directory(root, include, exclude)
+    
+    # Strip content if not requested
+    if not content:
+        for report in reports:
+            for sym in report.symbols:
+                sym.content = None
+    
     payload = json.dumps([report.to_dict() for report in reports], indent=2)
     if output:
         output.write_text(payload, encoding="utf-8")
