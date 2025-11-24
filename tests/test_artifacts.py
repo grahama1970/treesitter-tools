@@ -6,10 +6,13 @@ from pathlib import Path
 from treesitter_tools import api
 
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
+EXPECTED_DIR = Path(__file__).parent / "expected"
 
 def load_expected(artifact_path):
     """Load expected output JSON for an artifact."""
-    expected_path = Path(str(artifact_path) + '.expected.json')
+    # Just use the filename with .json extension
+    expected_name = artifact_path.name + '.json'
+    expected_path = EXPECTED_DIR / expected_name
     if not expected_path.exists():
         return None
     return json.loads(expected_path.read_text(encoding='utf-8'))
@@ -127,5 +130,5 @@ def test_all_artifacts_have_expected():
         artifact = ARTIFACTS_DIR / name
         assert artifact.exists(), f"Artifact {name} missing"
         
-        expected_path = Path(str(artifact) + '.expected.json')
+        expected_path = EXPECTED_DIR / (name + '.json')
         assert expected_path.exists(), f"Expected output for {name} missing"

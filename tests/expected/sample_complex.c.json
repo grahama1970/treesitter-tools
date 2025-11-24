@@ -1,0 +1,47 @@
+[
+  {
+    "kind": "function",
+    "name": "Cache",
+    "start_line": 16,
+    "end_line": 22,
+    "signature": "Cache* cache_create(int capacity) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "cache_set",
+    "start_line": 24,
+    "end_line": 30,
+    "signature": "void cache_set(Cache* cache, const char* key, void* value) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "cache_get",
+    "start_line": 32,
+    "end_line": 39,
+    "signature": "void* cache_get(Cache* cache, const char* key) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "cache_destroy",
+    "start_line": 41,
+    "end_line": 47,
+    "signature": "void cache_destroy(Cache* cache) { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "function",
+    "name": "hash_string",
+    "start_line": 49,
+    "end_line": 55,
+    "signature": "unsigned int hash_string(const char* str) { ...",
+    "docstring": null,
+    "content": null
+  }
+]

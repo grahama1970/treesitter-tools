@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "class",
+    "name": "DatabaseConnection",
+    "start_line": 3,
+    "end_line": 18,
+    "signature": "class DatabaseConnection: ...",
+    "docstring": null,
+    "content": "class DatabaseConnection:\n    \"\"\"Manages database connections.\"\"\"\n    \n    def __init__(self, host, port):\n        self.host = host\n        self.port = port\n        self._connected = False\n    \n    def connect(self):\n        \"\"\"Establish database connection.\"\"\"\n        self._connected = True\n        return True\n    \n    def disconnect(self):\n        \"\"\"Close database connection.\"\"\"\n        self._connected = False"
+  },
+  {
+    "kind": "function",
+    "name": "__init__",
+    "start_line": 6,
+    "end_line": 9,
+    "signature": "def __init__(self, host, port): ...",
+    "docstring": null,
+    "content": "def __init__(self, host, port):\n        self.host = host\n        self.port = port\n        self._connected = False"
+  },
+  {
+    "kind": "function",
+    "name": "connect",
+    "start_line": 11,
+    "end_line": 14,
+    "signature": "def connect(self): ...",
+    "docstring": null,
+    "content": "def connect(self):\n        \"\"\"Establish database connection.\"\"\"\n        self._connected = True\n        return True"
+  },
+  {
+    "kind": "function",
+    "name": "disconnect",
+    "start_line": 16,
+    "end_line": 18,
+    "signature": "def disconnect(self): ...",
+    "docstring": null,
+    "content": "def disconnect(self):\n        \"\"\"Close database connection.\"\"\"\n        self._connected = False"
+  },
+  {
+    "kind": "class",
+    "name": "UserRepository",
+    "start_line": 20,
+    "end_line": 32,
+    "signature": "class UserRepository: ...",
+    "docstring": null,
+    "content": "class UserRepository:\n    \"\"\"Repository for user operations.\"\"\"\n    \n    def __init__(self, db):\n        self.db = db\n    \n    def find_by_id(self, user_id):\n        \"\"\"Find user by ID.\"\"\"\n        return {\"id\": user_id, \"name\": \"User\"}\n    \n    async def create_user(self, data):\n        \"\"\"Create a new user.\"\"\"\n        pass"
+  },
+  {
+    "kind": "function",
+    "name": "__init__",
+    "start_line": 23,
+    "end_line": 24,
+    "signature": "def __init__(self, db): ...",
+    "docstring": null,
+    "content": "def __init__(self, db):\n        self.db = db"
+  },
+  {
+    "kind": "function",
+    "name": "find_by_id",
+    "start_line": 26,
+    "end_line": 28,
+    "signature": "def find_by_id(self, user_id): ...",
+    "docstring": null,
+    "content": "def find_by_id(self, user_id):\n        \"\"\"Find user by ID.\"\"\"\n        return {\"id\": user_id, \"name\": \"User\"}"
+  },
+  {
+    "kind": "function",
+    "name": "create_user",
+    "start_line": 30,
+    "end_line": 32,
+    "signature": "async def create_user(self, data): ...",
+    "docstring": null,
+    "content": "async def create_user(self, data):\n        \"\"\"Create a new user.\"\"\"\n        pass"
+  },
+  {
+    "kind": "function",
+    "name": "validate_email",
+    "start_line": 34,
+    "end_line": 36,
+    "signature": "def validate_email(email): ...",
+    "docstring": null,
+    "content": "def validate_email(email):\n    \"\"\"Validate email format.\"\"\"\n    return \"@\" in email"
+  },
+  {
+    "kind": "function",
+    "name": "send_notification",
+    "start_line": 38,
+    "end_line": 40,
+    "signature": "async def send_notification(user_id, message): ...",
+    "docstring": null,
+    "content": "async def send_notification(user_id, message):\n    \"\"\"Send notification to user.\"\"\"\n    pass"
+  }
+]
