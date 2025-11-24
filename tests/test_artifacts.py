@@ -111,19 +111,24 @@ def test_c_complex_artifact():
 def test_junk_file_artifact():
     """Test that junk file is handled gracefully."""
     artifact = ARTIFACTS_DIR / "junk.txt"
+    expected = load_expected(artifact)
+    
+    assert expected is not None
+    assert expected.get("error") == "ValueError"
     
     # Should raise ValueError for unknown extension
     with pytest.raises(ValueError, match="Cannot detect Tree-sitter language"):
         api.list_symbols(artifact)
 
 def test_all_artifacts_have_expected():
-    """Ensure all artifacts (except junk) have expected outputs."""
+    """Ensure all artifacts have expected outputs."""
     artifacts = [
         "sample_complex.py",
         "sample_react.jsx",
         "sample_complex.rs",
         "sample_complex.go",
         "sample_complex.c",
+        "junk.txt",  # Even error cases have expected results
     ]
     
     for name in artifacts:

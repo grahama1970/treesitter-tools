@@ -1,0 +1,4 @@
+{
+  "error": "ValueError",
+  "message": "Cannot detect Tree-sitter language for junk.txt"
+}
