@@ -1,5 +1,23 @@
 [
   {
+    "kind": "class",
+    "name": "<anonymous>",
+    "start_line": 5,
+    "end_line": 8,
+    "signature": "struct { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
+    "kind": "class",
+    "name": "CacheEntry",
+    "start_line": 10,
+    "end_line": 14,
+    "signature": "struct { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
     "kind": "function",
     "name": "Cache",
     "start_line": 16,

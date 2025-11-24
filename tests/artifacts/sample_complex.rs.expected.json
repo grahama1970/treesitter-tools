@@ -9,7 +9,7 @@
     "content": null
   },
   {
-    "kind": "function",
+    "kind": "class",
     "name": "K",
     "start_line": 8,
     "end_line": 30,

@@ -97,7 +97,7 @@ FUNCTION_NODE_TYPES = {
     "javascript": {"function_declaration", "method_definition", "arrow_function"},
     "typescript": {"function_declaration", "method_definition", "generator_function_declaration"},
     "go": {"function_declaration", "method_declaration"},
-    "rust": {"function_item", "impl_item"},
+    "rust": {"function_item"},  # Removed impl_item to avoid duplication with classes
     "java": {"method_declaration"},
     "kotlin": {"function_declaration"},
     "php": {"function_definition", "method_declaration"},
@@ -113,15 +113,17 @@ FUNCTION_NODE_TYPES = {
 CLASS_NODE_TYPES = {
     "python": {"class_definition"},
     "javascript": {"class_declaration"},
-    "typescript": {"class_declaration"},
-    "java": {"class_declaration"},
+    "typescript": {"class_declaration", "interface_declaration"},
+    "java": {"class_declaration", "interface_declaration"},
     "kotlin": {"class_declaration"},
     "php": {"class_declaration"},
-    "rust": {"impl_item", "struct_item"},
+    "go": {"type_spec"},  # Captures type Foo struct { ... }
+    "c": {"struct_specifier"},  # Note: C structs are data-only, no methods
+    "rust": {"struct_item", "impl_item"},
     "cpp": {"class_specifier", "struct_specifier"},
     "objc": {"class_declaration"},
-    "csharp": {"class_declaration"},
-    "scala": {"class_definition"},
+    "csharp": {"class_declaration", "interface_declaration"},
+    "scala": {"class_definition", "trait_definition"},
 }
 
 NAME_NODE_TYPES = {"identifier", "name", "property_identifier", "type_identifier"}

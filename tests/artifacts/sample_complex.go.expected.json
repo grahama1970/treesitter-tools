@@ -1,5 +1,14 @@
 [
   {
+    "kind": "class",
+    "name": "Cache",
+    "start_line": 8,
+    "end_line": 12,
+    "signature": "Cache struct { ...",
+    "docstring": null,
+    "content": null
+  },
+  {
     "kind": "function",
     "name": "NewCache",
     "start_line": 14,

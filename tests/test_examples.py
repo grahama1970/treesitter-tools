@@ -178,22 +178,21 @@ func Function() {}
 """
     f = _create_file(tmp_path, "test.go", content)
     symbols = api.list_symbols(f)
-    # Go doesn't have "class" node type in core.py mapping?
-    # Checking core.py...
-    # CLASS_NODE_TYPES doesn't have "go".
-    # So MyStruct won't be found as a class.
-    # Method and Function should be found.
     names = {s.name for s in symbols}
+    # Now detects MyStruct as a class
+    assert "MyStruct" in names
     assert "Method" in names
     assert "Function" in names
-    assert len(symbols) == 2
+    assert len(symbols) == 3
 
 def test_go_single_class(tmp_path):
-    # Go structs are not currently mapped to classes in core.py
+    # Go structs are now mapped to classes
     content = "package main\ntype Data struct {}"
     f = _create_file(tmp_path, "test.go", content)
     symbols = api.list_symbols(f)
-    assert len(symbols) == 0
+    assert len(symbols) == 1
+    assert symbols[0].name == "Data"
+    assert symbols[0].kind == "class"
 
 # --- C Tests ---
 
@@ -210,19 +209,23 @@ def test_c_multiple_functions(tmp_path):
     assert len(symbols) == 2
 
 def test_c_mixed(tmp_path):
-    # C doesn't have classes, but has structs.
-    # core.py doesn't map C structs to classes.
+    # C structs now mapped to classes
     content = "struct S { int x; }; void func() {}"
     f = _create_file(tmp_path, "test.c", content)
     symbols = api.list_symbols(f)
-    assert len(symbols) == 1
-    assert symbols[0].name == "func"
+    assert len(symbols) == 2
+    names = {s.name for s in symbols}
+    assert "S" in names
+    assert "func" in names
 
 def test_c_single_class(tmp_path):
+    # C structs now mapped to classes
     content = "struct Data { int x; };"
     f = _create_file(tmp_path, "test.c", content)
     symbols = api.list_symbols(f)
-    assert len(symbols) == 0
+    assert len(symbols) == 1
+    assert symbols[0].name == "Data"
+    assert symbols[0].kind == "class"
 
 # --- Junk Files ---
 
