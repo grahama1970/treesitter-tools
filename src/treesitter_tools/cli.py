@@ -57,10 +57,11 @@ def symbols(
     language: Optional[str] = typer.Option(None, help="Override detected language"),
     output: Optional[Path] = typer.Option(None, help="Optional path to JSON output"),
     content: bool = typer.Option(False, "--content", "-c", help="Include full source code of symbols"),
+    max_chunk_size: Optional[int] = typer.Option(None, help="Max size in chars for content chunks"),
 ):
     """List functions/classes detected in the file."""
     try:
-        items = extract_symbols(path, language)
+        items = extract_symbols(path, language, max_chunk_size)
         if not items:
             typer.secho(f"Warning: No symbols found in {path}", err=True, fg=typer.colors.YELLOW)
             
@@ -118,10 +119,11 @@ def scan(
     outline: Optional[Path] = typer.Option(None, help="Optional markdown outline destination"),
     content: bool = typer.Option(False, "--content", "-c", help="Include full source code of symbols"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Print errors and skipped files"),
+    max_chunk_size: Optional[int] = typer.Option(None, help="Max size in chars for content chunks"),
 ):
     """Walk a directory and summarize symbols per file."""
     
-    reports = scan_directory(root, include, exclude)
+    reports = scan_directory(root, include, exclude, max_chunk_size)
     
     # Strip content if not requested
     if not content:

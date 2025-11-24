@@ -137,10 +137,6 @@ def is_binary_file(path: Path) -> bool:
             return b"\x00" in chunk
     except OSError:
         return False
-
-NAME_NODE_TYPES = {"identifier", "name", "property_identifier", "type_identifier"}
-
-
 @dataclass
 class CodeSymbol:
     kind: str
@@ -150,9 +146,14 @@ class CodeSymbol:
     signature: Optional[str]
     docstring: Optional[str]
     content: Optional[str] = None
+    # Chunking fields
+    chunk_index: Optional[int] = None
+    chunk_count: Optional[int] = None
+    parent_symbol: Optional[str] = None
+    overflow: Optional[bool] = None
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "kind": self.kind,
             "name": self.name,
             "start_line": self.start_line,
@@ -161,6 +162,14 @@ class CodeSymbol:
             "docstring": self.docstring,
             "content": self.content,
         }
+        if self.overflow:
+            data.update({
+                "chunk_index": self.chunk_index,
+                "chunk_count": self.chunk_count,
+                "parent_symbol": self.parent_symbol,
+                "overflow": self.overflow,
+            })
+        return data
 
 
 def detect_language(path: Path, override: Optional[str] = None) -> Optional[str]:
@@ -168,7 +177,7 @@ def detect_language(path: Path, override: Optional[str] = None) -> Optional[str]
         return override
     ext = path.suffix.lstrip(".").lower()
     return LANGUAGE_MAPPINGS.get(ext)
-
+PARSER_CACHE = {}
 
 def load_language(language: str) -> Language:
     try:
@@ -178,8 +187,13 @@ def load_language(language: str) -> Language:
 
 
 def parse_source(source: bytes, language: str) -> Node:
-    parser = Parser()
-    parser.language = load_language(language)
+    if language not in PARSER_CACHE:
+        parser = Parser()
+        parser.language = load_language(language)
+        PARSER_CACHE[language] = parser
+    else:
+        parser = PARSER_CACHE[language]
+    
     tree = parser.parse(source)
     return tree.root_node
 
@@ -225,7 +239,7 @@ def _signature_snippet(node: Node, source: bytes) -> str:
     return first.strip()
 
 
-def extract_symbols(path: Path, language: Optional[str] = None) -> List[CodeSymbol]:
+def extract_symbols(path: Path, language: Optional[str] = None, max_chunk_size: Optional[int] = None) -> List[CodeSymbol]:
     path = Path(path)
     if is_binary_file(path):
         raise ValueError(f"Refusing to parse binary file: {path}")
@@ -287,8 +301,6 @@ def extract_symbols(path: Path, language: Optional[str] = None) -> List[CodeSymb
             if name_node:
                 name = _node_text(name_node, source)
             else:
-                # Anonymous struct or typedef handling would be here
-                # For now, avoid recursing into fields which might pick up field types
                 name = "<anonymous>"
         else:
             # Use the node itself or a specific child for name extraction
@@ -296,18 +308,82 @@ def extract_symbols(path: Path, language: Optional[str] = None) -> List[CodeSymb
             name = _identifier_from(target, source) or "<anonymous>"
         
         doc = _python_docstring(node, source) if language == "python" else None
-        
-        symbols.append(
-            CodeSymbol(
-                kind=kind,
-                name=name,
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1,
-                signature=_signature_snippet(node, source),
-                docstring=doc,
-                content=_node_text(node, source),
+        content = _node_text(node, source)
+        signature = _signature_snippet(node, source)
+        start_line = node.start_point[0] + 1
+        end_line = node.end_point[0] + 1
+
+        # Chunking logic
+        if max_chunk_size and len(content) > max_chunk_size:
+            chunks = []
+            current_pos = 0
+            total_len = len(content)
+            
+            while current_pos < total_len:
+                # Determine chunk end
+                chunk_end = min(current_pos + max_chunk_size, total_len)
+                
+                # If not the last chunk, try to align to newline
+                if chunk_end < total_len:
+                    # Look for newline up to 100 chars back to avoid breaking lines mid-statement if possible
+                    # But simpler: just look forward for next newline if it's close?
+                    # Design decision: Hard split at max_chunk_size is safer for strict limits,
+                    # but line splitting is better for LLMs.
+                    # Let's try to find the *last* newline within the chunk limit
+                    last_newline = content.rfind('\n', current_pos, chunk_end)
+                    if last_newline != -1 and last_newline > current_pos:
+                        chunk_end = last_newline + 1 # Include the newline
+                    # Else: no newline found, hard split (rare for code)
+                
+                chunk_text = content[current_pos:chunk_end]
+                
+                # Calculate line numbers for this chunk
+                # Relative to the start of the function
+                prefix = content[:current_pos]
+                chunk_start_line_offset = prefix.count('\n')
+                chunk_lines_count = chunk_text.count('\n')
+                
+                chunk_start_line = start_line + chunk_start_line_offset
+                chunk_end_line = chunk_start_line + chunk_lines_count
+                
+                chunks.append({
+                    "content": chunk_text,
+                    "start_line": chunk_start_line,
+                    "end_line": chunk_end_line
+                })
+                
+                current_pos = chunk_end
+            
+            # Create symbols for chunks
+            for i, chunk in enumerate(chunks):
+                symbols.append(
+                    CodeSymbol(
+                        kind=kind,
+                        name=name, # Keep same name
+                        start_line=chunk["start_line"],
+                        end_line=chunk["end_line"],
+                        signature=signature, # Copy signature to all chunks
+                        docstring=doc, # Copy docstring to all chunks
+                        content=chunk["content"],
+                        chunk_index=i,
+                        chunk_count=len(chunks),
+                        parent_symbol=name,
+                        overflow=True
+                    )
+                )
+        else:
+            # No chunking needed
+            symbols.append(
+                CodeSymbol(
+                    kind=kind,
+                    name=name,
+                    start_line=start_line,
+                    end_line=end_line,
+                    signature=signature,
+                    docstring=doc,
+                    content=content,
+                )
             )
-        )
 
     visit(root)
     return symbols
@@ -361,6 +437,7 @@ def scan_directory(
     root: Path,
     include: Sequence[str] | None = None,
     exclude: Sequence[str] | None = None,
+    max_chunk_size: Optional[int] = None,
 ) -> List[FileSymbols]:
     root = root.resolve()
     include = include or ["**/*"]
@@ -376,7 +453,7 @@ def scan_directory(
             continue
         
         try:
-            symbols = extract_symbols(path)
+            symbols = extract_symbols(path, max_chunk_size=max_chunk_size)
             language = detect_language(path) or "unknown"
             if symbols:
                 reports.append(FileSymbols(path=path, language=language, symbols=symbols))
