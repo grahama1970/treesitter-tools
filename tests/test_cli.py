@@ -195,9 +195,8 @@ def test_cli_error_handling_missing_file():
     result = run_cli(["symbols", "/nonexistent/file.py"])
     
     assert result.returncode != 0
-    # Should have error output
-    assert len(result.stderr) > 0 or "Error" in result.stdout
-
+    # Typer handles missing arguments automatically, usually prints to stderr
+    assert "does not exist" in result.stderr
 
 def test_cli_error_handling_invalid_language(tmp_path):
     """Test CLI error handling for invalid language."""
@@ -206,5 +205,59 @@ def test_cli_error_handling_invalid_language(tmp_path):
     
     result = run_cli(["symbols", str(test_file), "--language", "invalid_lang"])
     
-    # Should fail or handle gracefully
-    assert result.returncode != 0 or "invalid_lang" not in result.stdout
+    assert result.returncode != 0
+    # Check for friendly error message
+    assert "Error: Tree-sitter grammar for 'invalid_lang' is unavailable" in result.stderr
+
+def test_cli_error_handling_unknown_extension(tmp_path):
+    """Test CLI error handling for unknown extension."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("some text", encoding="utf-8")
+    
+    result = run_cli(["symbols", str(test_file)])
+    
+    assert result.returncode != 0
+    assert "Cannot detect Tree-sitter language" in result.stderr
+    assert "Hint: Try using --language" in result.stderr
+
+def test_cli_version():
+    """Test --version flag."""
+    result = run_cli(["--version"])
+    assert result.returncode == 0
+    assert "treesitter-tools v0.1.0" in result.stdout
+
+def test_cli_scan_verbose(tmp_path):
+    """Test scan command with --verbose flag showing errors."""
+    # Create a binary file to trigger an error
+    binary = tmp_path / "binary.py"
+    with binary.open("wb") as f:
+        f.write(b"\x00\x00\x00")
+        
+    result = run_cli(["scan", str(tmp_path), "--verbose"])
+    
+    assert result.returncode == 0
+    # Should see error report in stderr
+    assert "Encountered 1 errors" in result.stderr
+    assert "binary.py" in result.stderr
+    assert "Refusing to parse binary file" in result.stderr
+
+def test_cli_symbols_empty_warning(tmp_path):
+    """Test that symbols command warns when no symbols found."""
+    # Create a file with no symbols (e.g. just comments)
+    f = tmp_path / "empty.py"
+    f.write_text("# Just a comment", encoding="utf-8")
+    
+    result = run_cli(["symbols", str(f)])
+    
+    assert result.returncode == 0
+    assert "Warning: No symbols found" in result.stderr
+
+def test_cli_scan_summary(tmp_path):
+    """Test that scan command prints summary stats."""
+    (tmp_path / "file1.py").write_text("def foo(): pass", encoding="utf-8")
+    
+    result = run_cli(["scan", str(tmp_path)])
+    
+    assert result.returncode == 0
+    assert "Scanned 1 files" in result.stderr
+    assert "Found 1 symbols" in result.stderr

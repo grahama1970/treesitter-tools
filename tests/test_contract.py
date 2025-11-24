@@ -81,7 +81,7 @@ def test_contract_safe_defaults_binary(tmp_path):
     # Current implementation might try to detect language by extension.
     # If no extension, it returns None -> ValueError in extract_symbols.
     
-    with pytest.raises(ValueError, match="Cannot detect Tree-sitter language"):
+    with pytest.raises(ValueError, match="Refusing to parse binary file"):
         api.list_symbols(f)
 
 def test_contract_safe_defaults_missing_grammar(tmp_path):

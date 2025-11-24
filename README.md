@@ -17,20 +17,72 @@ It auto-detects 30+ languages (Python, JS/TS, C/C++, Obj-C, Rust, Go, Java/Kotli
 # install locally
 uv pip install -e .
 
-# list functions/classes in a file (metadata only)
-treesitter-tools symbols path/to/file.py
+## Usage
 
-# extract full source code of functions/classes
-treesitter-tools symbols path/to/file.py --content
+### List Symbols in a File
 
-# save JSON elsewhere and override the language
-treesitter-tools symbols app/component.tsx --language typescript --output ast.json
+```bash
+# Auto-detect language
+treesitter-tools symbols src/core.py
 
-# run a query (same syntax as `tree-sitter query`)
-treesitter-tools query app/component.tsx '(function_declaration name: (identifier) @name)'
+# Explicit language
+treesitter-tools symbols script.txt --language python
 
-# walk an entire repo and get JSON + Markdown outline
-treesitter-tools scan . --include "src/**/*.py" --outline outline.md --output symbols.json
+# Include full content (useful for LLM context)
+treesitter-tools symbols src/core.py --content
+```
+
+### Scan a Directory
+
+```bash
+# Scan current directory recursively
+treesitter-tools scan .
+
+# Filter by glob pattern
+treesitter-tools scan src --include "**/*.py"
+
+# Generate markdown outline
+treesitter-tools scan src --outline OUTLINE.md
+
+# Verbose mode (show errors and skipped files)
+treesitter-tools scan src --verbose
+```
+
+### Query with Tree-sitter S-expressions
+
+```bash
+treesitter-tools query src/core.py "(function_definition) @func"
+```
+
+## Troubleshooting
+
+### Common Errors
+
+**"Cannot detect Tree-sitter language"**
+- The file extension is unknown (e.g., `.txt`).
+- **Fix:** Use the `--language` flag to specify it manually:
+  ```bash
+  treesitter-tools symbols myscript.txt --language python
+  ```
+
+**"Refusing to parse binary file"**
+- The file appears to be binary (contains NUL bytes).
+- **Fix:** `treesitter-tools` only supports text source code.
+
+**"Tree-sitter grammar for 'xyz' is unavailable"**
+- The requested language grammar is not installed in the environment.
+- **Fix:** Ensure `tree-sitter-language-pack` supports the language.
+
+**"No symbols found"**
+- The file was parsed, but no functions or classes were found.
+- **Fix:** Check if the file contains code, or if the language mapping supports the constructs you expect.
+
+## Development
+
+### Running Tests
+
+```bash
+uv run pytest
 ```
 
 ### Content Extraction

@@ -93,7 +93,7 @@ DEFAULT_FUNCTION_NODE_TYPES = {
 }
 
 FUNCTION_NODE_TYPES = {
-    "python": {"function_definition", "async_function_definition"},
+    "python": {"function_definition", "async_function_definition", "decorated_definition"},
     "javascript": {"function_declaration", "method_definition", "arrow_function"},
     "typescript": {"function_declaration", "method_definition", "generator_function_declaration"},
     "go": {"function_declaration", "method_declaration"},
@@ -111,7 +111,7 @@ FUNCTION_NODE_TYPES = {
 }
 
 CLASS_NODE_TYPES = {
-    "python": {"class_definition"},
+    "python": {"class_definition", "decorated_definition"},
     "javascript": {"class_declaration"},
     "typescript": {"class_declaration", "interface_declaration"},
     "java": {"class_declaration", "interface_declaration"},
@@ -125,6 +125,18 @@ CLASS_NODE_TYPES = {
     "csharp": {"class_declaration", "interface_declaration"},
     "scala": {"class_definition", "trait_definition"},
 }
+
+NAME_NODE_TYPES = {"identifier", "name", "property_identifier", "type_identifier"}
+
+
+def is_binary_file(path: Path) -> bool:
+    """Check if file is binary by looking for NUL bytes in first 8KB."""
+    try:
+        with path.open("rb") as f:
+            chunk = f.read(8192)
+            return b"\x00" in chunk
+    except OSError:
+        return False
 
 NAME_NODE_TYPES = {"identifier", "name", "property_identifier", "type_identifier"}
 
@@ -215,6 +227,9 @@ def _signature_snippet(node: Node, source: bytes) -> str:
 
 def extract_symbols(path: Path, language: Optional[str] = None) -> List[CodeSymbol]:
     path = Path(path)
+    if is_binary_file(path):
+        raise ValueError(f"Refusing to parse binary file: {path}")
+
     language = detect_language(path, language)
     if not language:
         raise ValueError(f"Cannot detect Tree-sitter language for {path}")
@@ -224,36 +239,75 @@ def extract_symbols(path: Path, language: Optional[str] = None) -> List[CodeSymb
     func_nodes = FUNCTION_NODE_TYPES.get(language, DEFAULT_FUNCTION_NODE_TYPES)
     class_nodes = CLASS_NODE_TYPES.get(language, set())
 
+    # Track visited nodes to avoid duplicates (e.g. decorated function inside decorated_definition)
+    visited_nodes = set()
+
     def visit(node: Node) -> None:
+        if node.id in visited_nodes:
+            return
+
+        # Special handling for Python decorators
+        if language == "python" and node.type == "decorated_definition":
+            # The decorated_definition contains the function/class definition as a child
+            # We want to capture the whole decorated node as the content
+            # But we need to check if it's a function or class
+            body = node.child_by_field_name("definition")
+            if body:
+                if body.type in func_nodes:
+                    process_node(node, "function", body)
+                    visited_nodes.add(body.id) # Don't process the inner definition again
+                elif body.type in class_nodes:
+                    process_node(node, "class", body)
+                    visited_nodes.add(body.id)
+            visited_nodes.add(node.id)
+            return
+
+        # Special handling for Go type_spec (only structs/interfaces)
+        if language == "go" and node.type == "type_spec":
+            # Check if it's a struct or interface
+            type_node = node.child_by_field_name("type")
+            if type_node and type_node.type in {"struct_type", "interface_type"}:
+                process_node(node, "class")
+            visited_nodes.add(node.id)
+            return
+
         if node.type in func_nodes:
-            name = _identifier_from(node, source) or "<anonymous>"
-            doc = _python_docstring(node, source) if language == "python" else None
-            symbols.append(
-                CodeSymbol(
-                    kind="function",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    signature=_signature_snippet(node, source),
-                    docstring=doc,
-                    content=_node_text(node, source),
-                )
-            )
+            process_node(node, "function")
         elif node.type in class_nodes:
-            name = _identifier_from(node, source) or "<anonymous>"
-            symbols.append(
-                CodeSymbol(
-                    kind="class",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    signature=_signature_snippet(node, source),
-                    docstring=None,
-                    content=_node_text(node, source),
-                )
-            )
+            process_node(node, "class")
+        
+        visited_nodes.add(node.id)
         for child in node.children:
             visit(child)
+
+    def process_node(node: Node, kind: str, name_source_node: Optional[Node] = None) -> None:
+        # For C structs, try to find name more robustly
+        if language == "c" and node.type == "struct_specifier":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = _node_text(name_node, source)
+            else:
+                # Anonymous struct or typedef handling would be here
+                # For now, avoid recursing into fields which might pick up field types
+                name = "<anonymous>"
+        else:
+            # Use the node itself or a specific child for name extraction
+            target = name_source_node or node
+            name = _identifier_from(target, source) or "<anonymous>"
+        
+        doc = _python_docstring(node, source) if language == "python" else None
+        
+        symbols.append(
+            CodeSymbol(
+                kind=kind,
+                name=name,
+                start_line=node.start_point[0] + 1,
+                end_line=node.end_point[0] + 1,
+                signature=_signature_snippet(node, source),
+                docstring=doc,
+                content=_node_text(node, source),
+            )
+        )
 
     visit(root)
     return symbols
@@ -320,14 +374,17 @@ def scan_directory(
             continue
         if exclude and _match_any(exclude, rel):
             continue
+        
         try:
             symbols = extract_symbols(path)
-        except Exception:
+            language = detect_language(path) or "unknown"
+            if symbols:
+                reports.append(FileSymbols(path=path, language=language, symbols=symbols))
+        except Exception as exc:
+            # Capture error in the report
+            reports.append(FileSymbols(path=path, language="unknown", symbols=[], error=str(exc)))
             continue
-        if not symbols:
-            continue
-        language = detect_language(path) or "unknown"
-        reports.append(FileSymbols(path=path, language=language, symbols=symbols))
+            
     return reports
 
 
@@ -356,10 +413,14 @@ class FileSymbols:
     path: Path
     language: str
     symbols: List[CodeSymbol]
+    error: Optional[str] = None
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "path": self.path.as_posix(),
             "language": self.language,
             "symbols": [sym.to_dict() for sym in self.symbols],
         }
+        if self.error:
+            data["error"] = self.error
+        return data
